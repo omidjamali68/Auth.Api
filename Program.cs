@@ -1,8 +1,8 @@
-using Auth.Api;
 using Auth.Api.Data;
 using Auth.Api.Models;
 using Auth.Api.Services;
 using Auth.Api.Services.Contracts;
+using Auth.Api.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,12 +14,14 @@ builder.Services.AddDbContext<AppDbContext>(option =>
     option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
+builder.Services.Configure<IrSmsSetting>(builder.Configuration.GetSection("ApiSettings:IrSmsSettings"));
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<ISmsService, SmsServiceIr>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();

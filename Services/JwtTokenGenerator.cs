@@ -1,5 +1,6 @@
 ﻿using Auth.Api.Models;
 using Auth.Api.Services.Contracts;
+using Auth.Api.Settings;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -25,7 +26,8 @@ namespace Auth.Api.Services
             {
                 new Claim(JwtRegisteredClaimNames.Email, applicationUser.Email),
                 new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id),
-                new Claim(JwtRegisteredClaimNames.Name, applicationUser.Name)
+                new Claim(JwtRegisteredClaimNames.Name, applicationUser.Name),
+                new Claim(ClaimTypes.NameIdentifier, applicationUser.UserName)
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor
