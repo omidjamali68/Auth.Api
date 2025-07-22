@@ -148,9 +148,19 @@ namespace Auth.Api.Services
                 return result;
             }
 
-            if (userVerification.VerificationCode != dto.VerificationCode) 
+            if (userVerification.TryCount >= 5)
             {
-                result.CreateError("کد تایید وارد شده صحیح نمیباشد");
+                result.CreateError("تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً کد جدید دریافت کنید.");
+                return result;
+            }
+
+            userVerification.SentFromIP = dto.UserIp; // یا از HttpContext
+
+            if (userVerification.VerificationCode != dto.VerificationCode)
+            {
+                userVerification.TryCount += 1;
+                await _db.SaveChangesAsync();
+                result.CreateError("کد تایید وارد شده صحیح نمی‌باشد");
                 return result;
             }
 

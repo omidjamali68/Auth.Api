@@ -25,6 +25,8 @@ builder.Services.AddScoped<ISmsService, SmsServiceIr>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
+
 
 var app = builder.Build();
 

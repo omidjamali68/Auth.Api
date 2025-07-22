@@ -11,11 +11,13 @@ namespace Auth.Api.Controllers
     {
         private readonly IAuthService _authService;
         private ResponseDto _response;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthApiController(IAuthService authService)
+        public AuthApiController(IAuthService authService, IHttpContextAccessor httpContextAccessor)
         {
             _authService = authService;
             _response = new();
+            _httpContextAccessor = httpContextAccessor;
         }
 
         [HttpPost("register")]
@@ -36,6 +38,7 @@ namespace Auth.Api.Controllers
         [HttpPut("verify-code")]
         public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
         {
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
             return await _authService.ConfirmVerificationCode(dto);
         }
 
