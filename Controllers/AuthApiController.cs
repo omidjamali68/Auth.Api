@@ -33,6 +33,12 @@ namespace Auth.Api.Controllers
             return Ok(_response);
         }
 
+        [HttpPut("verify-code")]
+        public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
+        {
+            return await _authService.ConfirmVerificationCode(dto);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
         {

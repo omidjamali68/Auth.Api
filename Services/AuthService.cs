@@ -6,12 +6,15 @@ using Auth.Api.Services.Contracts;
 using Auth.Api.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace Auth.Api.Services
 {
     public class AuthService : IAuthService
     {
         private const int MAX_VERIFICATION_CODE_SEND_PER_DAY = 10;
+        private const int EXPIRE_VERIFICATIONCODE_TIME_MINUTE = 5;
+
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -113,6 +116,54 @@ namespace Auth.Api.Services
             }            
         }
 
+        public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
+        {
+            var result = new ResponseDto();
+
+            var applicationUser = await _userManager.FindByNameAsync(dto.PhoneNumber);
+
+            if(applicationUser == null)
+            {
+                result.CreateError("کاربر قبلا ثبت نام نکرده است");
+                return result;
+            }
+
+
+            var userVerification = await _db.VerificationCodes
+                .Where(_ => _.PhoneNumber == dto.PhoneNumber && _.IsUsed == false)
+                .OrderByDescending(_ => _.VerificationDate)
+                .FirstOrDefaultAsync();
+            
+            if (userVerification == null)
+            {
+                result.CreateError("کد تایید برای این کاربر یافت نشد");
+                return result;
+            }
+
+            var expireTime = DateTime.Now.Subtract(new TimeSpan(0, EXPIRE_VERIFICATIONCODE_TIME_MINUTE, 0));
+
+            if (userVerification.VerificationDate < expireTime)
+            {
+                result.CreateError("کد تایید منقضی شده است");
+                return result;
+            }
+
+            if (userVerification.VerificationCode != dto.VerificationCode) 
+            {
+                result.CreateError("کد تایید وارد شده صحیح نمیباشد");
+                return result;
+            }
+
+            applicationUser.PhoneNumberConfirmed = true;
+
+            userVerification.IsUsed = true;
+            userVerification.UsedAt = DateTime.Now;
+
+            await _db.SaveChangesAsync();
+
+            return result.Successful();
+        }
+
         private async Task SendVerificationCode(RegisterRequestDto dto)
         {
             var code = string.Empty.RandomInt(6);
@@ -129,9 +180,10 @@ namespace Auth.Api.Services
                 VerificationCode = verificationCode,
                 VerificationDate = DateTime.Now,
                 PhoneNumber = phoneNumber,
+                IsUsed = false,
             });
 
             await _db.SaveChangesAsync();
-        }
+        }        
     }
 }
