@@ -34,18 +34,27 @@ namespace Auth.Api.Services
             _smsService = smsService;
         }
 
-        public async Task<bool> AssignRole(string userName, string roleName)
+        public async Task<ResponseDto> AssignRole(string userName, string roleName)
         {
+            var result = new ResponseDto();
+
             var user = _db.ApplicationUsers.FirstOrDefault(x => x.UserName.ToLower() == userName.ToLower());
             if (user == null)
-                return false;
+            {
+                result.CreateError("کاربری با این نام کاربری یافت نشد");
+                return result;
+            }
 
             if (!_roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
-                await _roleManager.CreateAsync(new IdentityRole(roleName));
+            {
+                result.CreateError($"نقش {roleName} در سیستم وجود ندارد. لطفا با مدیر سیستم تماس بگیرید");
+                return result;
+            }
+            //await _roleManager.CreateAsync(new IdentityRole(roleName));
 
             await _userManager.AddToRoleAsync(user, roleName);
 
-            return true;
+            return result.Successful();
         }
 
         public async Task<LoginResponseDto> LoginByPassword(LoginRequestDto dto)
@@ -88,26 +97,38 @@ namespace Auth.Api.Services
             return result;
         }
 
-        public async Task<string> Register(RegisterRequestDto dto)
+        public async Task<ResponseDto> Register(RegisterRequestDto dto)
         {
+            var result = new ResponseDto();
+
             if (string.IsNullOrEmpty(dto.UserName))
-                return "لطفا شماره همراه را وارد کنید";
+            {
+                return result.CreateError("لطفا شماره همراه را وارد کنید");
+            }
 
             if (!dto.UserName.IsValidMobile())
-                return "شماره همراه باید به صورت 09120000000 وارد شود";
+            {
+                return result.CreateError("شماره همراه باید به صورت 09120000000 وارد شود");
+            }
 
             var userExist = _db.ApplicationUsers.Any(x => x.UserName.ToLower() == dto.UserName.ToLower());
             if (userExist)
-                return "این کاربر قبلا ثبت نام کرده است";
+            {
+                return result.CreateError("این کاربر قبلا ثبت نام کرده است");
+            }
 
-            if (await _db.VerificationCodes.CountAsync(x => x.PhoneNumber == dto.PhoneNumber) > MAX_VERIFICATION_CODE_SEND_PER_DAY)
-                return $"حداکثر تعداد ارسال کد در روز {MAX_VERIFICATION_CODE_SEND_PER_DAY} میباشد";            
+            if (await _db.VerificationCodes.CountAsync(
+                x => x.PhoneNumber == dto.UserName) > MAX_VERIFICATION_CODE_SEND_PER_DAY)
+            {
+                return result.CreateError(
+                    $"حداکثر تعداد ارسال کد در روز {MAX_VERIFICATION_CODE_SEND_PER_DAY} میباشد");
+            }
 
             var user = new ApplicationUser
             {
                 UserName = dto.UserName,
                 Email = dto.Email,
-                PhoneNumber = dto.PhoneNumber,
+                PhoneNumber = dto.UserName,
                 NormalizedEmail = dto.Email?.ToUpper(),
                 Name = dto.Name,
                 CreatedAt = DateTime.Now
@@ -115,23 +136,24 @@ namespace Auth.Api.Services
 
             try
             {
-                var result = await _userManager.CreateAsync(user, dto.Password);
-                if (result.Succeeded)
+                var createUserResult = await _userManager.CreateAsync(user, dto.Password);
+                if (createUserResult.Succeeded)
                 {
                     await SendVerificationCode(
                         new SendVerificationCodeRequestDto { PhoneNumber = dto.UserName});
 
-                    return "";
+                    return result.Successful();
                 }
                 else
-                {
-                    return result.Errors.FirstOrDefault().Description;
+                {                    
+                    return result.CreateError(
+                        createUserResult.Errors.FirstOrDefault()?.Description); 
                 }
             }
             catch(Exception ex) 
             {
-                return ex.Message;
-            }            
+                return result.CreateError(ex.Message);
+            }
         }
 
         public async Task<ResponseDto> LoginBySms(LoginBySmsRequestDto dto)

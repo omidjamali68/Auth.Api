@@ -1,6 +1,5 @@
 ﻿using Auth.Api.Models.Dto;
 using Auth.Api.Services.Contracts;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Api.Controllers
@@ -10,50 +9,68 @@ namespace Auth.Api.Controllers
     public class AuthApiController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private ResponseDto _response;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public AuthApiController(IAuthService authService, IHttpContextAccessor httpContextAccessor)
         {
             _authService = authService;
-            _response = new();
             _httpContextAccessor = httpContextAccessor;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
         {
-            var errorMessage = await _authService.Register(dto);
+            var result = await _authService.Register(dto);
 
-            if (!string.IsNullOrEmpty(errorMessage)) 
+            if (!result.IsSuccess) 
             {
-                _response.IsSuccess = false;
-                _response.Message = errorMessage;
-                return BadRequest(_response);
+                return BadRequest(result);
             }
 
-            return Ok(_response);
+            return Ok(result);
         }
 
         [HttpPut("verify-code")]
-        public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
+        public async Task<IActionResult> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
         {
             dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
-            return await _authService.ConfirmVerificationCode(dto);
+            var result = await _authService.ConfirmVerificationCode(dto);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("send-verification-code")]
-        public async Task<ResponseDto> SendVerificationCode(SendVerificationCodeRequestDto dto)
+        public async Task<IActionResult> SendVerificationCode(SendVerificationCodeRequestDto dto)
         {
-            return await _authService.SendVerificationCode(dto);
+            var result = await _authService.SendVerificationCode(dto);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         [HttpPut("login-by-sms")]
-        public async Task<ResponseDto> LoginBySms(LoginBySmsRequestDto dto)
+        public async Task<IActionResult> LoginBySms(LoginBySmsRequestDto dto)
         {
             dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
             dto.UserAgent = Request.Headers["User-Agent"].ToString();
-            return await _authService.LoginBySms(dto);
+
+            var result = await _authService.LoginBySms(dto);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("login-by-password")]
@@ -61,23 +78,27 @@ namespace Auth.Api.Controllers
         {
             dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
             dto.UserAgent = Request.Headers["User-Agent"].ToString();
-            var loginResponse = await _authService.LoginByPassword(dto);            
-            
-            return Ok(loginResponse);
+            var result = await _authService.LoginByPassword(dto);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("assign-role")]
         public async Task<IActionResult> AssignRole([FromBody] AssignRoleDto dto)
         {
-            var assignRoleResponse = await _authService.AssignRole(dto.UserName, dto.RoleName);
-            if (!assignRoleResponse)
+            var result = await _authService.AssignRole(dto.UserName, dto.RoleName);
+
+            if (!result.IsSuccess)
             {
-                _response.IsSuccess = false;
-                _response.Message = "Error encountered";
-                return BadRequest(_response);
+                return BadRequest(result);
             }
-            
-            return Ok(_response);
+
+            return Ok(result);
         }
     }
 }

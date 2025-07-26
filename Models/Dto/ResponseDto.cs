@@ -8,10 +8,11 @@ namespace Auth.Api.Models.Dto
         public bool IsSuccess { get; set; } = true;
         public string Message { get; set; } = "";
 
-        internal void CreateError(string error)
+        internal ResponseDto CreateError(string error)
         {
             IsSuccess = false;
             Message = error;
+            return this;
         }
 
         internal ResponseDto Successful()

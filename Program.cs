@@ -71,7 +71,6 @@ async Task SeedDataAsync()
         }
         catch (Exception ex)
         {
-            // می‌تونی لاگ بزنی
             Console.WriteLine("خطا در اجرای Seed: " + ex.Message);
         }
     }
