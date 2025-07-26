@@ -42,18 +42,28 @@ namespace Auth.Api.Controllers
             return await _authService.ConfirmVerificationCode(dto);
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
+        [HttpPost("send-verification-code")]
+        public async Task<ResponseDto> SendVerificationCode(SendVerificationCodeRequestDto dto)
         {
-            var loginResponse = await _authService.Login(dto);
-            if(loginResponse.User == null)
-            {
-                _response.IsSuccess = false;
-                _response.Message = "Username or password is incorrect";
-                return BadRequest(_response);
-            }
-            _response.Data = loginResponse;
-            return Ok(_response);
+            return await _authService.SendVerificationCode(dto);
+        }
+
+        [HttpPut("login-by-sms")]
+        public async Task<ResponseDto> LoginBySms(LoginBySmsRequestDto dto)
+        {
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
+            dto.UserAgent = Request.Headers["User-Agent"].ToString();
+            return await _authService.LoginBySms(dto);
+        }
+
+        [HttpPost("login-by-password")]
+        public async Task<IActionResult> LoginByPassword([FromBody] LoginRequestDto dto)
+        {
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
+            dto.UserAgent = Request.Headers["User-Agent"].ToString();
+            var loginResponse = await _authService.LoginByPassword(dto);            
+            
+            return Ok(loginResponse);
         }
 
         [HttpPost("assign-role")]

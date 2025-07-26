@@ -10,6 +10,8 @@ namespace Auth.Api.Data.EntityMapping
         {
             builder.Property(x => x.UserName).IsRequired();
             builder.Property(x => x.CreatedAt).IsRequired();
+
+            builder.HasData();
         }
     }
 }

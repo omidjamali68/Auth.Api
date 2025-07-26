@@ -48,27 +48,44 @@ namespace Auth.Api.Services
             return true;
         }
 
-        public async Task<LoginResponseDto> Login(LoginRequestDto dto)
+        public async Task<LoginResponseDto> LoginByPassword(LoginRequestDto dto)
         {
-            var user = _db.ApplicationUsers.FirstOrDefault(x => x.UserName.ToLower() == dto.UserName.ToLower());
+            var result = new LoginResponseDto();
+            var loginLogger = new LoginLogger(_db);
 
-            bool isValid = await _userManager.CheckPasswordAsync(user, dto.Password);
-            if (isValid == false || user == null)
+            var user = _db.ApplicationUsers.FirstOrDefault(x => x.UserName.ToLower() == dto.UserName.ToLower());
+            if (user == null)
             {
-                return new LoginResponseDto { User = null, Token = "" };
+                result.CreateError("کاربری با این نام کاربر یافت نشد");
+                await loginLogger.LogLoginAsync(
+                    dto.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
+                return result;
             }
 
-            var userDto = new UserDto
+            if (user.PhoneNumberConfirmed == false)
             {
-                Email = user.Email,
-                Id = user.Id,
-                Name = user.Name,
-                PhoneNumber = user.PhoneNumber
-            };
+                result.CreateError("کاربر احراز هویت نشده است");
+                await loginLogger.LogLoginAsync(
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربر احراز هویت نشده است");
+                return result;
+            }
+
+            bool isValid = await _userManager.CheckPasswordAsync(user, dto.Password);
+            if (isValid == false)
+            {
+                result.CreateError("کلمه عبور صحیح نمیباشد");
+                await loginLogger.LogLoginAsync(
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کلمه عبور صحیح نمیباشد");
+                return result;
+            }            
 
             var token = _jwtTokenGenerator.GenerateToken(user);
+            result.Successful($"{user.Name} خوش آمدید", new { Token = token });
 
-            return new LoginResponseDto { User = userDto, Token = token };
+            await loginLogger.LogLoginAsync(
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.Name} خوش آمدید");
+
+            return result;
         }
 
         public async Task<string> Register(RegisterRequestDto dto)
@@ -101,7 +118,8 @@ namespace Auth.Api.Services
                 var result = await _userManager.CreateAsync(user, dto.Password);
                 if (result.Succeeded)
                 {
-                    await SendVerificationCode(dto);
+                    await SendVerificationCode(
+                        new SendVerificationCodeRequestDto { PhoneNumber = dto.UserName});
 
                     return "";
                 }
@@ -116,6 +134,40 @@ namespace Auth.Api.Services
             }            
         }
 
+        public async Task<ResponseDto> LoginBySms(LoginBySmsRequestDto dto)
+        {
+            var result = new ResponseDto();
+            var loginLogger = new LoginLogger(_db);
+
+            var user = _db.ApplicationUsers.FirstOrDefault(x => x.UserName.ToLower() == dto.PhoneNumber.ToLower());
+            if (user == null)
+            {
+                result.CreateError("کاربری با این نام کاربر یافت نشد");
+                await loginLogger.LogLoginAsync(
+                    dto.PhoneNumber, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
+                return result;
+            }
+
+            var confirmCodeResult = await ConfirmVerificationCode(new ConfirmVerificationCodeDto
+            {
+                PhoneNumber = dto.PhoneNumber,
+                UserIp = dto.UserIp,
+                VerificationCode = dto.VerificationCode,
+            });
+
+            if (confirmCodeResult.IsSuccess == false)
+            {
+                await loginLogger.LogLoginAsync(
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web,confirmCodeResult.Message);                
+                return confirmCodeResult;
+            }
+
+            await loginLogger.LogLoginAsync(
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.Name} خوش آمدید");
+
+            return result.Successful($"{user.Name} خوش آمدید");
+        }
+
         public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
         {
             var result = new ResponseDto();
@@ -127,7 +179,6 @@ namespace Auth.Api.Services
                 result.CreateError("کاربر قبلا ثبت نام نکرده است");
                 return result;
             }
-
 
             var userVerification = await _db.VerificationCodes
                 .Where(_ => _.PhoneNumber == dto.PhoneNumber && _.IsUsed == false)
@@ -174,11 +225,21 @@ namespace Auth.Api.Services
             return result.Successful();
         }
 
-        private async Task SendVerificationCode(RegisterRequestDto dto)
+        public async Task<ResponseDto> SendVerificationCode(SendVerificationCodeRequestDto dto)
         {
+            var result = new ResponseDto();
+            var userExist = _db.ApplicationUsers.Any(x => x.UserName.ToLower() == dto.PhoneNumber.ToLower());
+            if (!userExist)
+            {
+                result.CreateError("کاربری با این شماره تماس یافت نشد");
+                return result;
+            }
+
             var code = string.Empty.RandomInt(6);
-            var smsResult = await _smsService.VerifySendAsync(dto.UserName, new List<SmsParams>() { new("cde", code) });
-            await SaveApplicationUserVerificationCode(dto.UserName, uint.Parse(code), smsResult.Message);
+            var smsResult = await _smsService.VerifySendAsync(dto.PhoneNumber, new List<SmsParams>() { new("cde", code) });
+            await SaveApplicationUserVerificationCode(dto.PhoneNumber, uint.Parse(code), smsResult.Message);
+
+            return result.Successful();
         }
 
         private async Task SaveApplicationUserVerificationCode(string phoneNumber,
@@ -194,6 +255,7 @@ namespace Auth.Api.Services
             });
 
             await _db.SaveChangesAsync();
-        }        
+        }
+        
     }
 }

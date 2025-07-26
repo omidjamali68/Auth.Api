@@ -1,4 +1,4 @@
-using Auth.Api.Data;
+﻿using Auth.Api.Data;
 using Auth.Api.Models;
 using Auth.Api.Services;
 using Auth.Api.Services.Contracts;
@@ -44,6 +44,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 ApplyMigration();
+await SeedDataAsync();
 app.Run();
 
 void ApplyMigration()
@@ -58,3 +59,21 @@ void ApplyMigration()
         }
     }
 }
+
+async Task SeedDataAsync()
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            await IdentitySeeder.SeedAsync(services);
+        }
+        catch (Exception ex)
+        {
+            // می‌تونی لاگ بزنی
+            Console.WriteLine("خطا در اجرای Seed: " + ex.Message);
+        }
+    }
+}
+
