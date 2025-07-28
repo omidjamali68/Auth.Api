@@ -26,7 +26,7 @@ namespace Auth.Api.Services
             {
                 new Claim(JwtRegisteredClaimNames.Email, applicationUser.Email),
                 new Claim(JwtRegisteredClaimNames.Sub, applicationUser.Id),
-                new Claim(JwtRegisteredClaimNames.Name, applicationUser.Name),
+                new Claim(JwtRegisteredClaimNames.Name, applicationUser.FullName),
                 new Claim(ClaimTypes.NameIdentifier, applicationUser.UserName)
             };
 

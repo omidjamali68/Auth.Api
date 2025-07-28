@@ -35,7 +35,7 @@ namespace Auth.Api.Data
                     PhoneNumberConfirmed = true,
                     EmailConfirmed = true,
                     PhoneNumber = adminUserName,
-                    Name = "Admin",
+                    FullName = "Admin",
                     TwoFactorEnabled = false,
                     LockoutEnabled = true,
                     AccessFailedCount = 0,

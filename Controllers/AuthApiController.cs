@@ -20,6 +20,9 @@ namespace Auth.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
         {
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?
+                .MapToIPv4().ToString();
+
             var result = await _authService.Register(dto);
 
             if (!result.IsSuccess) 
@@ -33,7 +36,9 @@ namespace Auth.Api.Controllers
         [HttpPut("verify-code")]
         public async Task<IActionResult> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
         {
-            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?
+                .MapToIPv4().ToString();
+
             var result = await _authService.ConfirmVerificationCode(dto);
 
             if (!result.IsSuccess)
@@ -60,7 +65,9 @@ namespace Auth.Api.Controllers
         [HttpPut("login-by-sms")]
         public async Task<IActionResult> LoginBySms(LoginBySmsRequestDto dto)
         {
-            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?
+                .MapToIPv4().ToString();
+
             dto.UserAgent = Request.Headers["User-Agent"].ToString();
 
             var result = await _authService.LoginBySms(dto);
@@ -76,8 +83,11 @@ namespace Auth.Api.Controllers
         [HttpPost("login-by-password")]
         public async Task<IActionResult> LoginByPassword([FromBody] LoginRequestDto dto)
         {
-            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.MapToIPv4().ToString();
+            dto.UserIp = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?
+                .MapToIPv4().ToString();
+
             dto.UserAgent = Request.Headers["User-Agent"].ToString();
+
             var result = await _authService.LoginByPassword(dto);
 
             if (!result.IsSuccess)

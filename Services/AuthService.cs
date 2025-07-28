@@ -11,10 +11,7 @@ using System;
 namespace Auth.Api.Services
 {
     public class AuthService : IAuthService
-    {
-        private const int MAX_VERIFICATION_CODE_SEND_PER_DAY = 10;
-        private const int EXPIRE_VERIFICATIONCODE_TIME_MINUTE = 5;
-
+    {        
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -89,71 +86,17 @@ namespace Auth.Api.Services
             }            
 
             var token = _jwtTokenGenerator.GenerateToken(user);
-            result.Successful($"{user.Name} خوش آمدید", new { Token = token });
+            result.Successful($"{user.FullName} خوش آمدید", new { Token = token });
 
             await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.Name} خوش آمدید");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.FullName} خوش آمدید");
 
             return result;
         }
 
         public async Task<ResponseDto> Register(RegisterRequestDto dto)
         {
-            var result = new ResponseDto();
-
-            if (string.IsNullOrEmpty(dto.UserName))
-            {
-                return result.CreateError("لطفا شماره همراه را وارد کنید");
-            }
-
-            if (!dto.UserName.IsValidMobile())
-            {
-                return result.CreateError("شماره همراه باید به صورت 09120000000 وارد شود");
-            }
-
-            var userExist = _db.ApplicationUsers.Any(x => x.UserName.ToLower() == dto.UserName.ToLower());
-            if (userExist)
-            {
-                return result.CreateError("این کاربر قبلا ثبت نام کرده است");
-            }
-
-            if (await _db.VerificationCodes.CountAsync(
-                x => x.PhoneNumber == dto.UserName) > MAX_VERIFICATION_CODE_SEND_PER_DAY)
-            {
-                return result.CreateError(
-                    $"حداکثر تعداد ارسال کد در روز {MAX_VERIFICATION_CODE_SEND_PER_DAY} میباشد");
-            }
-
-            var user = new ApplicationUser
-            {
-                UserName = dto.UserName,
-                Email = dto.Email,
-                PhoneNumber = dto.UserName,
-                NormalizedEmail = dto.Email?.ToUpper(),
-                Name = dto.Name,
-                CreatedAt = DateTime.Now
-            };
-
-            try
-            {
-                var createUserResult = await _userManager.CreateAsync(user, dto.Password);
-                if (createUserResult.Succeeded)
-                {
-                    await SendVerificationCode(
-                        new SendVerificationCodeRequestDto { PhoneNumber = dto.UserName});
-
-                    return result.Successful();
-                }
-                else
-                {                    
-                    return result.CreateError(
-                        createUserResult.Errors.FirstOrDefault()?.Description); 
-                }
-            }
-            catch(Exception ex) 
-            {
-                return result.CreateError(ex.Message);
-            }
+            return await new RegisterUser(_db, _userManager).Register(dto);
         }
 
         public async Task<ResponseDto> LoginBySms(LoginBySmsRequestDto dto)
@@ -185,9 +128,9 @@ namespace Auth.Api.Services
             }
 
             await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.Name} خوش آمدید");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.FullName} خوش آمدید");
 
-            return result.Successful($"{user.Name} خوش آمدید");
+            return result.Successful($"{user.FullName} خوش آمدید");
         }
 
         public async Task<ResponseDto> ConfirmVerificationCode(ConfirmVerificationCodeDto dto)
@@ -213,7 +156,7 @@ namespace Auth.Api.Services
                 return result;
             }
 
-            var expireTime = DateTime.Now.Subtract(new TimeSpan(0, EXPIRE_VERIFICATIONCODE_TIME_MINUTE, 0));
+            var expireTime = DateTime.Now.Subtract(new TimeSpan(0, Setting.EXPIRE_VERIFICATIONCODE_TIME_MINUTE, 0));
 
             if (userVerification.VerificationDate < expireTime)
             {
@@ -227,7 +170,7 @@ namespace Auth.Api.Services
                 return result;
             }
 
-            userVerification.SentFromIP = dto.UserIp; // یا از HttpContext
+            userVerification.SentFromIP = dto.UserIp; 
 
             if (userVerification.VerificationCode != dto.VerificationCode)
             {
@@ -250,11 +193,12 @@ namespace Auth.Api.Services
         public async Task<ResponseDto> SendVerificationCode(SendVerificationCodeRequestDto dto)
         {
             var result = new ResponseDto();
-            var userExist = _db.ApplicationUsers.Any(x => x.UserName.ToLower() == dto.PhoneNumber.ToLower());
-            if (!userExist)
+
+            if (await _db.VerificationCodes.CountAsync(
+                x => x.PhoneNumber == dto.PhoneNumber) > Setting.MAX_VERIFICATION_CODE_SEND_PER_DAY)
             {
-                result.CreateError("کاربری با این شماره تماس یافت نشد");
-                return result;
+                return result.CreateError(
+                    $"حداکثر تعداد ارسال کد در روز {Setting.MAX_VERIFICATION_CODE_SEND_PER_DAY} میباشد");
             }
 
             var code = string.Empty.RandomInt(6);
@@ -277,7 +221,7 @@ namespace Auth.Api.Services
             });
 
             await _db.SaveChangesAsync();
-        }
-        
+        }        
+
     }
 }
