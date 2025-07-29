@@ -21,6 +21,8 @@ namespace Auth.Api.Models
         [MaxLength(255)]
         public string? DeviceInfo { get; set; }
 
+        public LoginType LoginType { get; set; }  
+
         public LoginStatus LoginStatus { get; set; }  
 
         public LoginSource? LoginSource { get; set; }  
@@ -41,6 +43,12 @@ namespace Auth.Api.Models
         Web = 1,
         Api = 2,
         AdminPanel = 3
+    }
+
+    public enum LoginType : short
+    {
+        Sms = 1,
+        Password = 2
     }
 
 }

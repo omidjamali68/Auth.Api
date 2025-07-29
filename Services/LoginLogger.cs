@@ -18,6 +18,7 @@ namespace Auth.Api.Services
             string ip, 
             string userAgent,
             LoginStatus status, 
+            LoginType type, 
             LoginSource source, 
             string note)
         {
@@ -34,6 +35,7 @@ namespace Auth.Api.Services
                 DeviceInfo = deviceInfo,
                 LoginStatus = status,
                 LoginSource = source,
+                LoginType = type,
                 Note = note,
                 LoginTime = DateTime.Now
             };

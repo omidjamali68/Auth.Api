@@ -64,7 +64,7 @@ namespace Auth.Api.Services
             {
                 result.CreateError("کاربری با این نام کاربر یافت نشد");
                 await loginLogger.LogLoginAsync(
-                    dto.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
+                    dto.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginType.Password,LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
                 return result;
             }
 
@@ -72,7 +72,7 @@ namespace Auth.Api.Services
             {
                 result.CreateError("کاربر احراز هویت نشده است");
                 await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربر احراز هویت نشده است");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginType.Password,LoginSource.Web, "کاربر احراز هویت نشده است");
                 return result;
             }
 
@@ -81,7 +81,7 @@ namespace Auth.Api.Services
             {
                 result.CreateError("کلمه عبور صحیح نمیباشد");
                 await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کلمه عبور صحیح نمیباشد");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginType.Password, LoginSource.Web, "کلمه عبور صحیح نمیباشد");
                 return result;
             }            
 
@@ -89,7 +89,7 @@ namespace Auth.Api.Services
             result.Successful($"{user.FullName} خوش آمدید", new { Token = token });
 
             await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.FullName} خوش آمدید");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginType.Password, LoginSource.Web, $"{user.FullName} خوش آمدید");
 
             return result;
         }
@@ -109,7 +109,7 @@ namespace Auth.Api.Services
             {
                 result.CreateError("کاربری با این نام کاربر یافت نشد");
                 await loginLogger.LogLoginAsync(
-                    dto.PhoneNumber, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
+                    dto.PhoneNumber, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginType.Sms, LoginSource.Web, "کاربری با این نام کاربر یافت نشد");
                 return result;
             }
 
@@ -123,12 +123,12 @@ namespace Auth.Api.Services
             if (confirmCodeResult.IsSuccess == false)
             {
                 await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginSource.Web,confirmCodeResult.Message);                
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Failed, LoginType.Sms, LoginSource.Web,confirmCodeResult.Message);                
                 return confirmCodeResult;
             }
 
             await loginLogger.LogLoginAsync(
-                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginSource.Web, $"{user.FullName} خوش آمدید");
+                    user.UserName, dto.UserIp, dto.UserAgent, LoginStatus.Success, LoginType.Sms, LoginSource.Web, $"{user.FullName} خوش آمدید");
 
             return result.Successful($"{user.FullName} خوش آمدید");
         }

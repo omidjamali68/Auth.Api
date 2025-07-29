@@ -37,6 +37,9 @@ namespace Auth.Api.Data.EntityMapping
             builder.Property(x => x.LoginStatus)
                    .IsRequired();
 
+            builder.Property(x => x.LoginType)
+                   .IsRequired();
+
             builder.Property(x => x.LoginSource)
                    .IsRequired(false);
 
